@@ -9,39 +9,67 @@ import torch.nn.functional as F
 
 from .conv import Conv, DWConv, GhostConv, LightConv, RepConv
 from .transformer import TransformerBlock
-__all__ = ('DFL', 'HGBlock', 'HGStem', 'SPP', 'SPPF', 'C1', 'C2', 'C3', 'C2f', 'C3x', 'C3TR', 'C3Ghost',
-           'GhostBottleneck', 'Bottleneck', 'BottleneckCSP', 'Proto', 'RepC3')
 
-###################### EMA_attention  ####     START   by  AI&CV  ################################
-# with channels input
-# class EMA_attention(nn.Module):
-#     def __init__(self, channels, c2=None, factor=32):
-#         super(EMA_attention, self).__init__()
-#         self.groups = factor
-#         assert channels // self.groups > 0
-#         self.softmax = nn.Softmax(-1)
-#         self.agp = nn.AdaptiveAvgPool2d((1, 1))
-#         self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
-#         self.pool_w = nn.AdaptiveAvgPool2d((1, None))
-#         self.gn = nn.GroupNorm(channels // self.groups, channels // self.groups)
-#         self.conv1x1 = nn.Conv2d(channels // self.groups, channels // self.groups, kernel_size=1, stride=1, padding=0)
-#         self.conv3x3 = nn.Conv2d(channels // self.groups, channels // self.groups, kernel_size=3, stride=1, padding=1)
-#     def forward(self, x):
-#         b, c, h, w = x.size()
-#         group_x = x.reshape(b * self.groups, -1, h, w)  # b*g,c//g,h,w
-#         x_h = self.pool_h(group_x)
-#         x_w = self.pool_w(group_x).permute(0, 1, 3, 2)
-#         hw = self.conv1x1(torch.cat([x_h, x_w], dim=2))
-#         x_h, x_w = torch.split(hw, [h, w], dim=2)
-#         x1 = self.gn(group_x * x_h.sigmoid() * x_w.permute(0, 1, 3, 2).sigmoid())
-#         x2 = self.conv3x3(group_x)
-#         x11 = self.softmax(self.agp(x1).reshape(b * self.groups, -1, 1).permute(0, 2, 1))
-#         x12 = x2.reshape(b * self.groups, c // self.groups, -1)  # b*g, c//g, hw
-#         x21 = self.softmax(self.agp(x2).reshape(b * self.groups, -1, 1).permute(0, 2, 1))
-#         x22 = x1.reshape(b * self.groups, c // self.groups, -1)  # b*g, c//g, hw
-#         weights = (torch.matmul(x11, x12) + torch.matmul(x21, x22)).reshape(b * self.groups, 1, h, w)
-#         return (group_x * weights.sigmoid()).reshape(b, c, h, w)
-###################### EMA_attention  ####     END   by  AI&CV  ###############################
+__all__ = ('DFL', 'HGBlock', 'HGStem', 'SPP', 'SPPF', 'C1', 'C2', 'C3', 'C2f', 'C3x', 'C3TR', 'C3Ghost',
+           'GhostBottleneck', 'Bottleneck', 'BottleneckCSP', 'Proto', 'RepC3','ContextAggregation')
+###################### ContextAggregation  ####     START   by  AI&CV  ###############################
+
+from mmcv.cnn import ConvModule
+from mmengine.model import caffe2_xavier_init, constant_init
+class ContextAggregation(nn.Module):
+    """
+    Context Aggregation Block.
+
+    Args:
+        in_channels (int): Number of input channels.
+        reduction (int, optional): Channel reduction ratio. Default: 1.
+        conv_cfg (dict or None, optional): Config dict for the convolution
+            layer. Default: None.
+    """
+
+    def __init__(self, in_channels, reduction=1):
+        super(ContextAggregation, self).__init__()
+        self.in_channels = in_channels
+        self.reduction = reduction
+        self.inter_channels = max(in_channels // reduction, 1)
+
+        conv_params = dict(kernel_size=1, act_cfg=None)
+
+        self.a = ConvModule(in_channels, 1, **conv_params)
+        self.k = ConvModule(in_channels, 1, **conv_params)
+        self.v = ConvModule(in_channels, self.inter_channels, **conv_params)
+        self.m = ConvModule(self.inter_channels, in_channels, **conv_params)
+
+        self.init_weights()
+
+    def init_weights(self):
+        for m in (self.a, self.k, self.v):
+            caffe2_xavier_init(m.conv)
+        constant_init(self.m.conv, 0)
+
+    def forward(self, x):
+        #n, c = x.size(0)
+        n = x.size(0)
+        c = self.inter_channels
+        #n, nH, nW, c = x.shape
+
+        # a: [N, 1, H, W]
+        a = self.a(x).sigmoid()
+
+        # k: [N, 1, HW, 1]
+        k = self.k(x).view(n, 1, -1, 1).softmax(2)
+
+        # v: [N, 1, C, HW]
+        v = self.v(x).view(n, 1, c, -1)
+
+        # y: [N, C, 1, 1]
+        y = torch.matmul(v, k).view(n, c, 1, 1)
+        y = self.m(y) * a
+
+        return x + y
+
+###################### ContextAggregation  ####     END   by  AI&CV  ###############################
+
 class DFL(nn.Module):
     """
     Integral module of Distribution Focal Loss (DFL).
