@@ -2,7 +2,7 @@
 # YOLOv8 object detection model with P2-P5 outputs. For Usage examples see https://docs.ultralytics.com/tasks/detect
 
 # Parameters
-nc: 80  # number of classes
+nc: 10  # number of classes
 scales: # model compound scaling constants, i.e. 'model=yolov8n.yaml' will call yolov8.yaml with scale 'n'
   # [depth, width, max_channels]
   n: [0.33, 0.25, 1024]
@@ -16,42 +16,41 @@ backbone:
   # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
-  - [-1, 3, C2f, [128, True]]
+  - [-1, 3, C2f, [128, True]]  # 2
   - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
-  - [-1, 6, C2f, [256, True]]
-  - [-1, 1, Conv, [512, 3, 2]]  # 5-P4/16
-  - [-1, 6, C2f, [512, True]]
-  - [-1, 1, Conv, [1024, 3, 2]]  # 7-P5/32
-  - [-1, 3, C2f, [1024, True]]
-  - [-1, 1, SPPF, [1024, 5]]  # 9
+  - [-1, 6, C2f, [256, True]]  # 4 
+  - [-1, 1, EMA,[512]] # 5
+  - [-1, 1, Conv, [512, 3, 2]]  # 6-P4/16
+  - [-1, 6, C2f, [512, True]]  # 7
+  - [-1, 1 ,EMA,[1024]]  #8
+  - [-1, 1, Conv, [1024, 3, 2]]  # 9-P5/32
+  - [-1, 3, C2f, [1024, True]] # 10
+  - [-1, 1, SPPF, [1024, 5]]  # 11
 
 # YOLOv8.0-p2 head
 head:
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 10
-  - [[-1, 6], 1, Concat, [1]]  # cat backbone P4 11
-  - [-1, 3, C2f, [512]]  # 12
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 12 
+  - [[-1, 7], 1, Concat, [1]]  # cat backbone P4 13
+  - [-1, 3, C2f, [512]]  # 14
 
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 13
-  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3 # 14
-  - [-1, 3, C2f, [256]]  # 15 (P3/8-small)
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 15
+  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3 16
+  - [-1, 3, C2f, [256]]  # 17 (P3/8-small)
 
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 16
-  - [[-1, 2], 1, Concat, [1]]  # cat backbone P2 # 17
-  - [-1, 3, C2f, [128]]  # 18 (P2/4-xsmall)
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 18
+  - [[-1, 2], 1, Concat, [1]]  # cat backbone P2 19
+  - [-1, 3, C2f, [128]]  # 20 (P2/4-xsmall)
 
-  - [-1, 1, Conv, [128, 3, 2]] # 19
-  - [[-1, 15], 1, Concat, [1]]  # 20 cat head P3
-  - [-1, 3, C2f, [256]]  # 21 (P3/8-small)
-  - [-1, 1, EMA_attention, [256]]  # 22 (P5/32-large)
+  - [-1, 1, Conv, [128, 3, 2]] # 21
+  - [[-1, 17], 1, Concat, [1]]  # cat head P3 22
+  - [-1, 3, C2f, [256]]  # 23 (P3/8-small)
 
-  - [-1, 1, Conv, [256, 3, 2]]   # 23
-  - [[-1, 12], 1, Concat, [1]]  # 24 cat head P4
-  - [-1, 3, C2f, [512]]  # 25 (P4/16-medium)
-  - [-1, 1, EMA_attention, [512]]  # 26 (P5/32-large)
+  - [-1, 1, Conv, [256, 3, 2]] # 24
+  - [[-1, 14], 1, Concat, [1]]  # cat head P4 25
+  - [-1, 3, C2f, [512]]  # 26 (P4/16-medium)
 
-  - [-1, 1, Conv, [512, 3, 2]] #27
-  - [[-1, 9], 1, Concat, [1]]  # 28 cat head P5
+  - [-1, 1, Conv, [512, 3, 2]] # 27
+  - [[-1, 9], 1, Concat, [1]]  # cat head P5 28
   - [-1, 3, C2f, [1024]]  # 29 (P5/32-large)
-  - [-1, 1, EMA_attention, [1024]]  # 30 (P5/32-large)
 
-  - [[18, 22, 26, 30], 1, Detect, [nc]]  # Detect(P2, P3, P4, P5)
+  - [[20, 23, 26, 29], 1, Detect, [nc]]  # Detect(P2, P3, P4, P5)
