@@ -27,27 +27,28 @@ head:
   - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 10
   - [[-1, 6], 1, Concat, [1]]  # cat backbone P4 11
   - [-1, 3, C2f, [512]]  # 12
- 
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] #
-  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3
-  - [-1, 3, C2f, [256]]  # 15 (P3/8-small)
 
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] #16
-  - [[-1, 2], 1, Concat, [1]]  # cat backbone P2 # 17
-  - [-1, 3, C2f, [128]]  # 18 (P2/4-xsmall)
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 13
+  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3 # 14
+  - [-1, 3, C2f, [256]]  # (P3/8-small) 15
 
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 19
-  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3 # 20
-  - [-1, 3, C2f, [256]]  # 21 (P3/8-small)
-  - [-1, 1, EMA_attention, [256]]  # 22 (P5/32-large)
+
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
+  - [[-1, 2], 1, Concat, [1]]  # cat backbone P2
+  - [-1, 3, C2f, [128]]  # (P2/4-xsmall) 18
+
+  - [-1, 1, Conv, [128, 3, 2]]
+  - [[-1, 15], 1, Concat, [1]]  # cat head P3
+  - [-1, 3, C2f, [256]]  # (P3/8-small) 21
+  - [-1, 1, EMA, [256]]   # 22 
 
   - [-1, 1, Conv, [256, 3, 2]] # 23
   - [[-1, 12], 1, Concat, [1]]  # cat head P4 24
   - [-1, 3, C2f, [512]]  # 25 (P4/16-medium) 
-  - [-1, 1, EMA_attention, [512]]  # 26 (P5/32-large)
+  - [-1, 1, EMA, [512]]  # 26 (P5/32-large)
 
   - [-1, 1, Conv, [512, 3, 2]] # 27
   - [[-1, 9], 1, Concat, [1]]  # cat head P5 28
   - [-1, 3, C2f, [1024]]  # 29 (P5/32-large)
-  - [-1, 1, EMA_attention, [1024]]  # 30 (P5/32-large)
+  - [-1, 1, EMA, [1024]]  # 30 (P5/32-large)
   - [[18, 22, 26, 30], 1, Detect, [nc]]  # Detect(P3, P4, P5)
