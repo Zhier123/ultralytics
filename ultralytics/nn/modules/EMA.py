@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+import torch.nn as nn
 
 class EMA(nn.Module):
     def __init__(self, channels, c2=None, factor=32):
