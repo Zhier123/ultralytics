@@ -1,6 +1,15 @@
 import torch
 from torch import nn
 # ------------------------------------ODConv start -------------------------------------
+
+def autopad(k, p=None, d=1):  # kernel, padding, dilation
+    """Pad to 'same' shape outputs."""
+    if d > 1:
+        k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
+    if p is None:
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
+    return p
+
 class ODConv2d_3rd(nn.Conv2d):
 
     def __init__(self, in_channels, out_channels, kernel_size,
