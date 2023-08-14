@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+import torch.nn as nn
 # ------------------------------------ODConv start -------------------------------------
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
